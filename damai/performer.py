@@ -136,8 +136,8 @@ class ApiFetchPerform(Perform):
 
     async def build_order(self, buy_param):
         ep = {
-            "channel": "damai_app", "damai": "1", "umpChannel": 'damai@damaih5_h5',
-            "subChannel": '100031004', "atomSplit": '1', "serviceVersion": "2.0.0",
+            "channel": "damai_app", "damai": "1", "umpChannel": '100031004',
+            "subChannel": 'damai@damaih5_h5', "atomSplit": '1', "serviceVersion": "2.0.0",
             "customerType": "default"
         }
         data = {

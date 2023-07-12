@@ -62,8 +62,6 @@ def make_ticket_data(order_build_data: dict):
     data_dict[viewer]["fields"]["selectedNum"] = buyer_total_num
     for index in range(buyer_total_num):
         data_dict[viewer]["fields"]["viewerList"][index]["isUsed"] = True
-    sub = data_dict["confirmOrder_1"]["hidden"]["extensionMap"]["__ex_params__"]
-    sub = json.loads(sub, encoding='utf-8')["subChannel"]
     params['data'] = dumps(data_dict).replace('"true"', 'true')
 
     linkage = order_build_data["linkage"]
@@ -77,7 +75,7 @@ def make_ticket_data(order_build_data: dict):
     params['hierarchy'] = dumps(hierarchy_dict)
 
     feature = {
-            "subChannel": sub,
+            "subChannel": "damai@damaih5_h5",
             "returnUrl": "https://m.damai.cn/damai/pay-success/index.html?"
                          "spm=a2o71.orderconfirm.bottom.dconfirm&sqm=dianying.h5.unknown.value",
             "serviceVersion": "2.0.0", "dataTags": "sqm:dianying.h5.unknown.value"

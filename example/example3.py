@@ -1,4 +1,5 @@
 import asyncio
+import sys
 
 from loguru import logger
 
@@ -19,8 +20,10 @@ class Gather(ApiFetchPerform):
             await asyncio.gather(*tasks)
 
     async def _submit(self, item_id, sku_id, tickets):
+
         try:
             build_response = await self.build_order(f'{item_id}_{tickets}_{sku_id}')
+            # logger.info(f'check：{build_response.get("ret")}')
             data = build_response.get("data")
             data = make_ticket_data(data)
             crate_response = await self.create_order(data)
@@ -31,6 +34,7 @@ class Gather(ApiFetchPerform):
             logger.info(f'创建：{crate_response.get("ret")}')
             if "调用成功" in " ".join(crate_response.get("ret", [])):
                 logger.info("购买成功，到app订单管理中付款")
+                sys.exit()
 
 
 class Repeat(ApiFetchPerform):
