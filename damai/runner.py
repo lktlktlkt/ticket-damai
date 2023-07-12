@@ -32,6 +32,7 @@ class Runner:
                 self.loop.run_forever()
             except (KeyboardInterrupt, SystemExit):
                 pass
+        self.loop.run_until_complete(self.engine.perform.close())
 
     def _execute_accord_to_config(self):
         item_id = self.configs["ITEM_ID"]

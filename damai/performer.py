@@ -62,16 +62,13 @@ class ApiFetchPerform(Perform):
                    " Chrome/112.0.0.0 Safari/537.36",
         APP_KEY=12574478, RETRY=100, FAST=2, COOKIE=None
     )
+    NECESSARY = {"商品信息已过期", "Session", "令牌过期", "FAIL_SYS_USER_VALIDATE", "未支付订单"}
+    SECONDARY = {"库存", "挤爆"}
 
     def __init__(self):
         super().__init__()
-        self._session = aiohttp.ClientSession(connector=TCPConnector(ssl=False))
-
-    @property
-    def session(self):
-        if self._session.closed:
-            return aiohttp.ClientSession(connector=TCPConnector(ssl=False))
-        return self._session
+        self.connector = TCPConnector(ssl=False)
+        self.session = aiohttp.ClientSession(connector=self.connector)
 
     @property
     def headers(self):
@@ -98,19 +95,12 @@ class ApiFetchPerform(Perform):
 
         RETRY: 退出购票的条件，当响应某个值到达一定次数将结束购票。如果能确保不出现验证码
         可以把值配置的更高，持续时间长捡票。
-
-        当中使用了close()，当只有一个任务时无影响，当多item_id，有bug，可能后续更新在高层
-        代码显示调用。
         """
-        f1 = {"库存", "挤爆"}
-        # f2中是当前知道可以直接退出的，可能存在其它项
-        f2 = {"商品信息已过期", "Session", "令牌过期", "FAIL_SYS_USER_VALIDATE", "未支付订单"}
-        func = lambda sting: next((field for field in {*f1, *f2} if field in sting), sting)
         fast = self.DEFAULT_CONFIG["FAST"] - 1
         counter = Counter()
         c_ret = ''
 
-        while all(counter.get(i, 0) < self.DEFAULT_CONFIG["RETRY"] for i in f1):
+        while all(counter.get(i, 0) < self.DEFAULT_CONFIG["RETRY"] for i in self.SECONDARY):
             response = await self.build_order(f'{item_id}_{tickets}_{sku_id}')
             b_ret = ' '.join(response["ret"])
             logger.info(f'生成订单：{b_ret}')
@@ -123,13 +113,13 @@ class ApiFetchPerform(Perform):
                 response = await self.create_order(data)
                 c_ret = ' '.join(response["ret"])
                 logger.info(f"创建订单：{c_ret}")
-                counter.update([func(c_ret)])
+                counter.update([self.detection(c_ret)])
                 if "调用成功" in c_ret:
                     logger.info("购买成功，到app订单管理中付款")
                     break
-            counter.update([func(b_ret)])
+            counter.update([self.detection(b_ret)])
 
-            if any(i in b_ret or i in c_ret for i in f2):
+            if any(i in b_ret or i in c_ret for i in self.NECESSARY):
                 break
 
             if fast:
@@ -137,7 +127,12 @@ class ApiFetchPerform(Perform):
                 continue
 
             await asyncio.sleep(random.uniform(1, 1.5))
-        await self.close()
+
+    def detection(self, sting):
+        for field in {*self.SECONDARY, *self.NECESSARY}:
+            if field in sting:
+                return field
+            return sting
 
     async def build_order(self, buy_param):
         ep = {
@@ -147,7 +142,7 @@ class ApiFetchPerform(Perform):
         }
         data = {
             "buyNow": True, "exParams": json.dumps(ep, separators=(",", ":")),
-            "buyParam": buy_param, "dmChannel": self.DEFAULT_CONFIG["CHANNEL"]
+            "buyParam": buy_param, "dmChannel": 'damai@damaih5_h5'
         }
         data = json.dumps(data, separators=(",", ":"))
         t = timestamp()
@@ -162,8 +157,9 @@ class ApiFetchPerform(Perform):
         }
         bx_ua, bx_umidtoken = await self.ua_and_umidtoken()
         data = {'data': data, 'bx-ua': bx_ua, 'bx-umidtoken': bx_umidtoken}
-        response = await self.session.post(url, params=params, data=data, headers=self.headers)
-        return await response.json()
+        async with self.session.post(url, params=params, data=data,
+                                     headers=self.headers) as response:
+            return await response.json()
 
     async def create_order(self, data):
         t = timestamp()
@@ -178,8 +174,9 @@ class ApiFetchPerform(Perform):
         }
         bx_ua, bx_umidtoken = await self.ua_and_umidtoken()
         data = {'data': data, 'bx-ua': bx_ua, 'bx-umidtoken': bx_umidtoken}
-        response = await self.session.post(url, params=params, data=data, headers=self.headers)
-        return await response.json()
+        async with self.session.post(url, params=params, data=data,
+                                     headers=self.headers) as response:
+            return await response.json()
 
     async def ua_and_umidtoken(self) -> list:
         """获取订单页的bx-ua， bx-umidtoken
@@ -196,7 +193,7 @@ class ApiFetchPerform(Perform):
         except (ElementHandleError, NetworkError):
             title = await page.title()
             logger.error(f"目前停留标签页面为：{title}")
-            await self.session.close()
+            await self.close()
             raise ElementHandleError('bx_ua, umidtoken需要Page为订单页面, 先切换至订单页')
 
     async def close(self):

@@ -72,3 +72,34 @@ class OrderView:
         return item_name, start_time
 
 
+"""为了简便，不按python规范写了, 开发中"""
+
+
+class PerformField:
+
+    def __init__(self, limitQuantity, performBeginDTStr, performName, skuList):
+        self.limitQuantity = limitQuantity
+        self.performBeginDTStr = performBeginDTStr
+        self.performName = performName
+        self.skuList = skuList
+
+
+class SkuList:
+
+    def __init__(self, itemId, skuId, price, priceName):
+        self.itemId = itemId
+        self.skuId = skuId
+        self.price = price
+        self.priceName = priceName
+
+
+class Ticket:
+
+    def __init__(self):
+        self._ticket = {}
+
+    def add_perform(self, date, limitQuantity, performBeginDTStr, performName, skuList):
+        self._ticket[date] = PerformField(limitQuantity, performBeginDTStr, performName, skuList)
+
+
+
