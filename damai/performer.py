@@ -115,7 +115,7 @@ class ApiFetchPerform(Perform):
                 logger.info(f"创建订单：{c_ret}")
                 counter.update([self.detection(c_ret)])
                 if "调用成功" in c_ret:
-                    logger.info("购买成功，到app订单管理中付款")
+                    logger.info("抢票成功，前往app订单管理付款")
                     break
             counter.update([self.detection(b_ret)])
 
