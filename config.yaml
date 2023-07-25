@@ -1,9 +1,7 @@
-ITEM_ID: 726776161991
-CONCERT: "2023-08-05"
-PRICE: 看台480元
+ITEM_ID: 728815643570
+CONCERT: 1
+PRICE: [2, 1]
 TICKET: 1
 COOKIE:
-PORT: 9222
-RETRY: 100
-#PERFORM: 'example.example3.Gather'
+PERFORM: 'example.example3.SalableQuantity'
 

@@ -11,20 +11,18 @@ from damai.engine import ExecutionEngine
 class Runner:
 
     def __init__(self, configs=None):
+        logger.add("logs/{time:YYYY-MM-DD}.log", rotation="1 day")
         if isinstance(configs, dict) or configs is None:
             self.configs = Configs(configs)
 
         self.engine = ExecutionEngine(self.configs)
 
         self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.engine.perform.init_browser())
 
         self._scheduler = AsyncIOScheduler(timezone='Asia/Shanghai')
         self.single = False
 
     def start(self):
-        if self.configs["AUTO_JUMP"]:
-            self.loop.run_until_complete(self.engine.perform.auto_jump())
         self._execute_accord_to_config()
         if self.single:
             self._scheduler.start()
@@ -43,7 +41,7 @@ class Runner:
 
         d = self.configs.get("RUN_DATE", None)
         if d:
-            date = datetime.datetime.strptime(str(d), "%Y%m%d%H%M").timestamp()
+            date = datetime.datetime.strptime(str(d), "%Y%m%d%H%M%S").timestamp()
 
         run_date = datetime.datetime.fromtimestamp(date)
         if run_date >= datetime.datetime.now():

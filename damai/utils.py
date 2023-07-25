@@ -56,12 +56,12 @@ def make_ticket_data(order_build_data: dict):
                  field == key or field == key.split('_')[0]}
 
     viewer = next(key for key in data_dict.keys() if key.split('_')[0] == "dmViewer")
-    if not data_dict[viewer]["fields"]["viewerList"]:
-        raise ValueError("没有实名观演人")
-    buyer_total_num = data_dict[viewer]["fields"]["buyerTotalNum"]
-    data_dict[viewer]["fields"]["selectedNum"] = buyer_total_num
-    for index in range(buyer_total_num):
-        data_dict[viewer]["fields"]["viewerList"][index]["isUsed"] = True
+
+    buyer_total_num = data_dict[viewer]["fields"].get('buyerTotalNum')
+    if buyer_total_num:
+        data_dict[viewer]["fields"]["selectedNum"] = buyer_total_num
+        for index in range(buyer_total_num):
+            data_dict[viewer]["fields"]["viewerList"][index]["isUsed"] = True
     params['data'] = dumps(data_dict).replace('"true"', 'true')
 
     linkage = order_build_data["linkage"]

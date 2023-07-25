@@ -15,14 +15,24 @@ class ExecutionEngine:
         self.perform = load_object(self.configs["PERFORM"])()
         self.perform.update_default_config(self.configs)
 
-    def add_task(self, name: Union[int, str], concert: str, price: str, tickets: int):
+    def add_task(self, name: Union[int, str], concert: Union[int, str],
+                 price: Union[int, str], tickets: int):
         """添加异步任务至管理器
         name: 取决于在OrderView.add的参数
         concert, price, tickets：分别代表场次 价位 需购数量
         """
         bind = self.order.views[name]
-        sku_list = bind[concert]["skuList"]
-        sku = next(sku for sku in sku_list if price == sku["priceName"])
+        # 这个判断逻辑是要修改的，暂时这样用
+        if isinstance(price, str):
+            sku_list = bind[concert]["skuList"]
+            sku = next(sku for sku in sku_list if price == sku["priceName"])
+        elif isinstance(price, (int, list)):
+            price = price if isinstance(price, int) else price[0]
+            sku_list = bind[list(bind.keys())[concert - 1]]["skuList"]
+            sku = sku_list[price - 1]
+        else:
+            raise TypeError('支持的格式为 int or str')
+
         self.task.bind_task(name, (self.perform.submit, (sku["itemId"], sku["skuId"], tickets)))
 
     async def run_task(self, name):
