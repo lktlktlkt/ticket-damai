@@ -11,9 +11,10 @@ from damai.engine import ExecutionEngine
 class Runner:
 
     def __init__(self, configs=None):
-        logger.add("logs/{time:YYYY-MM-DD}.log", rotation="1 day")
         if isinstance(configs, dict) or configs is None:
             self.configs = Configs(configs)
+
+        logger.add("logs/{time:YYYY-MM-DD}.log", rotation="1 day", level=self.configs["LOG_LEVEL"])
 
         self.engine = ExecutionEngine(self.configs)
 
@@ -28,7 +29,7 @@ class Runner:
             self._scheduler.start()
             try:
                 self.loop.run_forever()
-            except (KeyboardInterrupt, SystemExit):
+            except (Exception,):
                 pass
         self.loop.run_until_complete(self.engine.perform.close())
 
@@ -43,13 +44,17 @@ class Runner:
         if d:
             date = datetime.datetime.strptime(str(d), "%Y%m%d%H%M%S").timestamp()
 
+        delay = int(self.configs.get("DELAY", 0))
+        if delay:
+            date = date + delay
+
         run_date = datetime.datetime.fromtimestamp(date)
+        logger.info(f'\n{name}\n抢票时间：{run_date}\n场次：{self.configs["CONCERT"]}\n'
+                    f'价格：{self.configs["PRICE"]}\n数量：{self.configs["TICKET"]}')
         if run_date >= datetime.datetime.now():
             self.single = True
             self._scheduler.add_job(self.engine.run_task, 'date', run_date=run_date,
                                     args=(item_id, ), name=name)
-            logger.info(f'\n{name}\n抢票时间：{run_date}\n场次：{self.configs["CONCERT"]}\n'
-                        f'价格：{self.configs["PRICE"]}\n数量：{self.configs["TICKET"]}')
         else:
             self.loop.run_until_complete(self.engine.run_task(item_id))
 

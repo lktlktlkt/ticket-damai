@@ -4,6 +4,7 @@ import re
 
 import requests
 from loguru import logger
+from retry import retry
 
 
 class OrderView:
@@ -47,6 +48,7 @@ class OrderView:
         item["skuList"] = li
         return date.split()[0], item
 
+    @retry(tries=3)
     def make_perform_request(self, item_id, data_id=''):
         response = requests.get(self.url.format(item_id, data_id), headers=self.headers, timeout=10)
         response.raise_for_status()

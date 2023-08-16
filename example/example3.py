@@ -16,7 +16,7 @@ class Gather(ApiFetchPerform):
     建议不要改动，且不要多次调用。
     """
 
-    POLL = 2
+    POLL = 1
     COUNT = 2
 
     async def submit(self, item_id, sku_id, tickets):
@@ -46,25 +46,12 @@ class Gather(ApiFetchPerform):
 
 
 class SalableQuantity(Gather):
-    """判断是否开售，来减少一些不必要请求，避免频繁导致出现滑块。
+    """判断是否有库存，来减少一些不必要请求，避免频繁导致出现滑块。
 
-    使用此类价格请使用整形，否则会不兼容。
+    使用此类价格请使用int或list，否则会不兼容。
 
-    优：支持按票价优先级抢，如
+    支持按票价优先级抢，如
     PRICE=[3, 2, 1] ==> 前几次会抢3，没抢到会查依次查询PRICE对应的余票进行抢
-
-    劣：可能需要提前调度程序，如果你的本地时间与抢票同步可忽略，不然就需要配置
-    RUN_DATE，可提前10s，在这10s中会提前查询，有票再抢。
-    1. 本地时间正确请注释  2. 抢票报错二次启动也请注释，除非就抢一个档次
-    `
-    while True:
-    tags, _ = next(self.pc_tags(item_id, data_id))
-    if not tags:
-        break
-    logger.debug(f'{tags} {sku_id}')
-    `
-    不提前还有个弊端，`calendars = self.order.get_calendar_id_list(item_id)`
-    是一个请求，可能会有点影响。
     """
 
     DEFAULT_CONFIG = dict(
@@ -77,17 +64,10 @@ class SalableQuantity(Gather):
         self.order = OrderView()
 
     async def submit(self, item_id, sku_id, tickets):
-        calendars = self.order.get_calendar_id_list(item_id)
-        data_id = calendars[self.DEFAULT_CONFIG["CONCERT"] - 1]
-
-        # 提前检测
-        while True:
-            tags, _ = next(self.pc_tags(item_id, data_id))
-            if not tags:
-                break
-            logger.debug(f'{tags} {sku_id}')
+        data_id = self.get_data_id(item_id)
 
         await super().submit(item_id, sku_id, tickets)
+        await asyncio.sleep(2)
 
         # 查询可接受的库存
         while True:
@@ -109,7 +89,12 @@ class SalableQuantity(Gather):
                 if "RGV587_ERROR" in ret:
                     await asyncio.sleep(9.5)
 
+                await asyncio.sleep(2)
                 break
+
+    def get_data_id(self, item_id):
+        calendars = self.order.get_calendar_id_list(item_id)
+        return calendars[self.DEFAULT_CONFIG["CONCERT"] - 1]
 
     def pc_tags(self, item_id, data_id):
         data = self.order.make_perform_request(item_id, data_id)
