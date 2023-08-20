@@ -7,6 +7,7 @@ from collections import Counter
 import aiohttp
 from aiohttp import TCPConnector
 from loguru import logger
+from retry import retry
 
 from damai.utils import get_sign, timestamp, make_ticket_data
 
@@ -33,7 +34,8 @@ class ApiFetchPerform(Perform):
                    " Chrome/112.0.0.0 Safari/537.36",
         APP_KEY=12574478, RETRY=100, FAST=2, COOKIE=None, ADDRESS=''
     )
-    NECESSARY = {"商品信息已过期", "Session", "令牌过期", "FAIL_SYS_USER_VALIDATE", "未支付订单"}
+    NECESSARY = {"商品信息已过期", "Session", "令牌过期", "FAIL_SYS_USER_VALIDATE",
+                 "未支付订单", "异常", "特权"}
     SECONDARY = {"库存", "挤爆"}
 
     def __init__(self):
@@ -105,11 +107,14 @@ class ApiFetchPerform(Perform):
                 return field
             return sting
 
-    async def build_order(self, buy_param):
+    async def build_order(self, buy_param, sign_key=None):
+        if not sign_key:
+            sign_key = await self.get_sign_key(buy_param.split("_")[0])
+
         ep = {
             "channel": "damai_app", "damai": "1", "umpChannel": '100031004',
             "subChannel": 'damai@damaih5_h5', "atomSplit": '1', "serviceVersion": "2.0.0",
-            "customerType": "default"
+            "customerType": "default", "signKey": sign_key
         }
         data = {
             "buyNow": True, "exParams": json.dumps(ep, separators=(",", ":")),
@@ -159,6 +164,31 @@ class ApiFetchPerform(Perform):
         url = 'https://mtop.damai.cn/h5/mtop.alibaba.damai.detail.getdetail/1.2/?'
         async with self.session.get(url, headers=self.headers, params=params) as response:
             return await response.json()
+
+    @retry(tries=3)
+    async def get_subpage_detail(self, item_id):
+        t = timestamp()
+        data = {
+            "itemId": item_id, "bizCode": "ali.china.damai", "scenario": "itemsku",
+            "exParams": json.dumps({"dataType": 4, "dataId": "", "privilegeActId": ""}, separators=(",", ":")),
+            "platform": "8", "comboChannel": "2", "dmChannel": "damai@damaih5_h5"
+        }
+        data = json.dumps(data, separators=(",", ":"))
+        sign = get_sign(self.token, t, self.DEFAULT_CONFIG["APP_KEY"], data)
+        params = {
+            "jsv": "2.7.2", "appKey": self.DEFAULT_CONFIG["APP_KEY"], "t": t, "forceAntiCreep": "true",
+            "sign": sign, "type": "originaljson", "dataType": "json", "timeout": 10000, "valueType": "original",
+            "v": "2.0", "H5Request": "true", "AntiCreep": "true", "useH5": "true",
+            "api": "mtop.alibaba.detail.subpage.getdetail", "data": data
+        }
+        url = "https://mtop.damai.cn/h5/mtop.alibaba.detail.subpage.getdetail/2.0/?"
+        async with self.session.get(url, headers=self.headers, params=params) as response:
+            return await response.json()
+
+    async def get_sign_key(self, item_id):
+        data = await self.get_subpage_detail(item_id)
+        result = data.get("data", {}).get("result")
+        return json.loads(result).get("itemBasicInfo", {}).get("t")
 
     async def close(self):
         await self.session.close()

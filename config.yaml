@@ -1,9 +1,9 @@
 # Gather SalableQuantity
 PERFORM: 'example.example3.SalableQuantity'
 
-ITEM_ID: 732414067381
-CONCERT: 1
-PRICE: 3
+ITEM_ID: 733238119009
+CONCERT: [1]
+PRICE: [2, 1, 3]
 TICKET: 1
 
 DELAY: 3

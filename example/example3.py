@@ -64,11 +64,10 @@ class SalableQuantity(Gather):
         self.order = OrderView()
 
     async def submit(self, item_id, sku_id, tickets):
-        data_id = self.get_data_id(item_id)
-
         await super().submit(item_id, sku_id, tickets)
         await asyncio.sleep(2)
 
+        data_id = self.get_data_id(item_id)
         # 查询可接受的库存
         while True:
             gen = self.pc_tags(item_id, data_id)
@@ -88,23 +87,24 @@ class SalableQuantity(Gather):
 
                 if "RGV587_ERROR" in ret:
                     await asyncio.sleep(9.5)
+                    break
 
                 await asyncio.sleep(2)
                 break
 
     def get_data_id(self, item_id):
         calendars = self.order.get_calendar_id_list(item_id)
-        return calendars[self.DEFAULT_CONFIG["CONCERT"] - 1]
+        concert = self.DEFAULT_CONFIG["CONCERT"]
+        concert = [concert] if isinstance(concert, int) else concert
+        return [calendars[c - 1] for c in concert]
 
     def pc_tags(self, item_id, data_id):
-        data = self.order.make_perform_request(item_id, data_id)
-        perform = data.get("perform", {})
-        sku_list = perform.get("skuList", [])
-        price = self.DEFAULT_CONFIG["PRICE"]
-        if isinstance(price, int):
-            info = sku_list[price - 1]
-            yield info.get("tags"), info.get('skuId')
-        else:
+        for id_ in data_id:
+            data = self.order.make_perform_request(item_id, id_)
+            perform = data.get("perform", {})
+            sku_list = perform.get("skuList", [])
+            price = self.DEFAULT_CONFIG["PRICE"]
+            price = [price] if isinstance(price, int) else price
             for index in price:
                 info = sku_list[index - 1]
                 yield info.get("tags"), info.get('skuId')
