@@ -11,7 +11,7 @@
 
 ### 使用
 - cookie：[详见](https://github.com/lktlktlkt/ticket-damai/issues/15);
-     example.cookie中实现了获取方法
+     cookie.py中实现了获取方法
 
 - 主要配置：自用建议使用yaml进行配置
 
@@ -19,7 +19,7 @@
     COOKIE = None   # 必填
   
     ITEM_ID = None  # 演唱会url中id或itemId
-    CONCERT = 1   # 场次
+    CONCERT = 1   # 场次 格式 1 或者 [1, 2]
     PRICE = 1    # 价格 格式 1 或者 [1, 2], 依次对应票档。目前只有`SalableQuantity`类支持list，否则值为下标0
     TICKET = 1   # 购票数量
     
